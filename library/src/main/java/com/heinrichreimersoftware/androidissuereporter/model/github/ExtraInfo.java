@@ -72,10 +72,21 @@ public class ExtraInfo {
         return extraInfo.isEmpty();
     }
 
+    public Map<String, String> getInfo() {
+        return extraInfo;
+    }
+
     public String toMarkdown() {
         if (extraInfo.isEmpty()) return "";
 
         StringBuilder output = new StringBuilder();
+        if (extraInfo.containsKey("logcat")) {
+            output.append("Logcat:\n---\n```")
+                    .append(extraInfo.get("logcat"))
+                    .append("```");
+            if (extraInfo.keySet().size() == 1)
+                return output.toString();
+        }
         output.append("Extra info:\n"
                 + "---\n"
                 + "<table>\n");

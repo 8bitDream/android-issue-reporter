@@ -1,17 +1,17 @@
 apply plugin: 'com.android.library'
-
-def versionMajor = 1
-def versionMinor = 3
-def versionPatch = 1
-def versionBuild = 0 // bump for dogfood builds, public betas, etc.
+apply plugin: 'maven-publish'
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 31
 
     defaultConfig {
+        def versionMajor = 1
+        def versionMinor = 3
+        def versionPatch = 1
+        def versionBuild = 0 // bump for dogfood builds, public betas, etc.
+
         minSdkVersion 15
-        targetSdkVersion 28
+        targetSdkVersion 31
         versionCode versionMajor * 10000 + versionMinor * 1000 + versionPatch * 100 + versionBuild
         versionName "${versionMajor}.${versionMinor}" + (versionPatch == 0 ? "" : ".${versionPatch}")
         vectorDrawables.useSupportLibrary = true
@@ -27,13 +27,30 @@ android {
     }
 }
 
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = 'com.heinrichreimersoftware.androidissuereporter'
+                artifactId = 'androidissuereporter'
+                version = '1.0'
+            }
+        }
+    }
+}
+
+
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.google.android.material:material:1.5.0'
 
     implementation 'org.eclipse.mylyn.github:org.eclipse.egit.github.core:2.1.5'
     implementation 'com.afollestad.material-dialogs:core:0.8.5.9'
-    implementation 'com.github.aakira:expandable-layout:1.4.3@aar'
+    implementation 'com.github.aakira:ExpandableLayout:v1.6.0'
 }

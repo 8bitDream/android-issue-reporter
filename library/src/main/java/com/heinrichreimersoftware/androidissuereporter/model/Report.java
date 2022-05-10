@@ -53,12 +53,15 @@ public class Report {
     public String getDescription() {
         StringBuilder builder = new StringBuilder();
         if (!TextUtils.isEmpty(email)) {
-            builder.append("*Sent by [**")
-                    .append(email)
-                    .append("**](mailto:")
-                    .append(email)
-                    .append(")*")
-                    .append(PARAGRAPH_BREAK);
+            builder.append("*Submitted by ");
+            String[] encrypt = email.split("@");
+            builder.append(encrypt[0]).append("@");
+            String[] domain = encrypt[1].split("\\.");
+            for (int i = 0; i < domain[0].length(); i ++) {
+                builder.append("*");
+            }
+            builder.append(".").append(domain[1]);
+            builder.append("*").append(PARAGRAPH_BREAK);
         }
         builder.append("Description:\n")
                 .append(HORIZONTAL_RULE)

@@ -24,25 +24,35 @@
 
 package com.heinrichreimersoftware.androidissuereporter;
 
+import static android.util.Patterns.EMAIL_ADDRESS;
+
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.graphics.drawable.Drawable;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
-import com.afollestad.materialdialogs.DialogAction;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringDef;
+import androidx.annotation.StringRes;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.NavUtils;
+
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.github.aakira.expandablelayout.ExpandableRelativeLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -66,17 +76,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringDef;
-import androidx.annotation.StringRes;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.NavUtils;
-
-import static android.util.Patterns.EMAIL_ADDRESS;
-
 public abstract class IssueReporterActivity extends AppCompatActivity {
     private static final String TAG = IssueReporterActivity.class.getSimpleName();
 
@@ -93,6 +92,8 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
     private static final String RESULT_ISSUES_NOT_ENABLED = "RESULT_ISSUES_NOT_ENABLED";
     private static final String RESULT_UNKNOWN = "RESULT_UNKNOWN";
     private boolean emailRequired = false;
+    private String issueUrl = "";
+    private String titleText = null;
     private int bodyMinChar = 0;
     private Toolbar toolbar;
     private TextInputEditText inputTitle;
@@ -101,15 +102,10 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
     private ImageButton buttonDeviceInfo;
     private ExpandableRelativeLayout layoutDeviceInfo;
     private ExpandableRelativeLayout layoutAnonymous;
-    private TextInputEditText inputUsername;
-    private TextInputEditText inputPassword;
     private TextInputEditText inputEmail;
     private RadioButton optionUseAccount;
     private RadioButton optionAnonymous;
-    private ExpandableRelativeLayout layoutLogin;
     private FloatingActionButton buttonSend;
-
-    private Drawable optionUseAccountButtonDrawable = null;
 
     private String token;
 
@@ -142,12 +138,9 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
         buttonDeviceInfo = findViewById(R.id.air_buttonDeviceInfo);
         layoutDeviceInfo = findViewById(R.id.air_layoutDeviceInfo);
 
-        inputUsername = findViewById(R.id.air_inputUsername);
-        inputPassword = findViewById(R.id.air_inputPassword);
         inputEmail = findViewById(R.id.air_inputEmail);
         optionUseAccount = findViewById(R.id.air_optionUseAccount);
         optionAnonymous = findViewById(R.id.air_optionAnonymous);
-        layoutLogin = findViewById(R.id.air_layoutLogin);
         layoutAnonymous = findViewById(R.id.air_layoutGuest);
 
         buttonSend = findViewById(R.id.air_buttonSend);
@@ -166,45 +159,46 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
             }
         }
 
-        buttonDeviceInfo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                layoutDeviceInfo.toggle();
-            }
-        });
-
-
-        inputPassword.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView textView, int actionId, KeyEvent event) {
-                if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    reportIssue();
-                    return true;
-                }
-                return false;
-            }
-        });
+        buttonDeviceInfo.setOnClickListener(v -> layoutDeviceInfo.toggle());
 
         updateGuestTokenViews();
 
         buttonSend.setImageResource(ColorUtils.isDark(ThemeUtils.getColorAccent(this)) ?
                 R.drawable.air_ic_send_dark : R.drawable.air_ic_send_light);
-        buttonSend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                reportIssue();
-            }
-        });
+        buttonSend.setOnClickListener(v -> reportIssue());
+
+        if (null != titleText) inputTitle.setText(titleText);
     }
 
     private void setOptionUseAccountMarginStart(int marginStart) {
-        LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) optionUseAccount.getLayoutParams();
+        LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams)
+                optionUseAccount.getLayoutParams();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             layoutParams.setMarginStart(marginStart);
         } else {
             layoutParams.leftMargin = marginStart;
         }
         optionUseAccount.setLayoutParams(layoutParams);
+    }
+
+    private void createLocalIssue() {
+        ExtraInfo extraInfo = new ExtraInfo();
+        onSaveExtraInfo(extraInfo);
+        if (extraInfo.getInfo().containsKey("logcat")) {
+            ClipboardManager clipboard = (ClipboardManager)
+                    getSystemService(Context.CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText(
+                    "logcat", extraInfo.getInfo().get("logcat")));
+        }
+        if (TextUtils.isEmpty(issueUrl)) {
+            GithubTarget target = getTarget();
+            issueUrl = "https://github.com/"+ target.getUsername()
+                    + "/" + target.getRepository() + "/issues/new";
+        }
+        Intent view = new Intent(Intent.ACTION_VIEW,
+                Uri.parse(issueUrl));
+        view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(view);
     }
 
     private void updateGuestTokenViews() {
@@ -217,68 +211,40 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
         } else {
             setOptionUseAccountMarginStart(0);
             optionUseAccount.setEnabled(true);
-            optionUseAccount.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    layoutLogin.expand();
-                    layoutAnonymous.collapse();
-                    inputUsername.setEnabled(true);
-                    inputPassword.setEnabled(true);
-                }
+            optionUseAccount.setOnClickListener(v -> {
+                layoutAnonymous.collapse();
+                createLocalIssue();
+                if (!isFinishing()) finish();
             });
             optionAnonymous.setVisibility(View.VISIBLE);
-            optionAnonymous.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    layoutLogin.collapse();
-                    layoutAnonymous.expand();
-                    inputUsername.setEnabled(false);
-                    inputPassword.setEnabled(false);
-                }
+            optionAnonymous.setOnClickListener(v -> {
+                layoutAnonymous.expand();
             });
         }
     }
 
     private void reportIssue() {
 
-        if (!validateInput()) return;
+        if (hasInputErrors()) return;
 
-        if (optionUseAccount.isChecked()) {
-            String username = inputUsername.getText().toString();
-            String password = inputPassword.getText().toString();
-            sendBugReport(new GithubLogin(username, password), null);
-        } else {
             if (TextUtils.isEmpty(token))
                 throw new IllegalStateException("You must provide a GitHub API Token.");
 
-            String email = null;
             if (!TextUtils.isEmpty(inputEmail.getText()) &&
                     EMAIL_ADDRESS.matcher(inputEmail.getText().toString()).matches()) {
-                email = inputEmail.getText().toString();
-            }
+                String email = inputEmail.getText().toString();
+                sendBugReport(new GithubLogin(token), email);
+            } else {
+                if (hasInputErrors()) return;
 
-            sendBugReport(new GithubLogin(token), email);
-        }
+                createLocalIssue();
+            }
     }
 
-    private boolean validateInput() {
+    private boolean hasInputErrors() {
         boolean hasErrors = false;
 
-        if (optionUseAccount.isChecked()) {
-            if (TextUtils.isEmpty(inputUsername.getText())) {
-                setError(inputUsername, R.string.air_error_no_username);
-                hasErrors = true;
-            } else {
-                removeError(inputUsername);
-            }
-
-            if (TextUtils.isEmpty(inputPassword.getText())) {
-                setError(inputPassword, R.string.air_error_no_password);
-                hasErrors = true;
-            } else {
-                removeError(inputPassword);
-            }
-        } else {
+        if (!optionUseAccount.isChecked()) {
             if (emailRequired) {
                 if (TextUtils.isEmpty(inputEmail.getText()) ||
                         !EMAIL_ADDRESS.matcher(inputEmail.getText().toString()).matches()) {
@@ -290,14 +256,14 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
             }
         }
 
-        if (TextUtils.isEmpty(inputTitle.getText())) {
+        if (TextUtils.isEmpty(inputTitle.getText()) && null == titleText) {
             setError(inputTitle, R.string.air_error_no_title);
             hasErrors = true;
         } else {
             removeError(inputTitle);
         }
 
-        if (TextUtils.isEmpty(inputDescription.getText())) {
+        if (bodyMinChar != 0 && TextUtils.isEmpty(inputDescription.getText())) {
             setError(inputDescription, R.string.air_error_no_description);
             hasErrors = true;
         } else {
@@ -311,7 +277,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
             } else
                 removeError(inputDescription);
         }
-        return !hasErrors;
+        return hasErrors;
     }
 
     private void setError(TextInputEditText editText, @StringRes int errorRes) {
@@ -351,9 +317,11 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
     }
 
     private void sendBugReport(GithubLogin login, String email) {
-        if (!validateInput()) return;
+        if (hasInputErrors()) return;
 
-        String bugTitle = inputTitle.getText().toString();
+        String bugTitle = titleText;
+        if (!TextUtils.isEmpty(inputTitle.getText()))
+            bugTitle = inputTitle.getText().toString();
         String bugDescription = inputDescription.getText().toString();
 
         DeviceInfo deviceInfo = new DeviceInfo(this);
@@ -378,12 +346,20 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
         }
     }
 
+    protected final void setPublicIssueUrl(String url) {
+        this.issueUrl = url;
+    }
+
+    protected final void setTitleTextDefault(String text) {
+        this.titleText = text;
+        inputTitle.setText(titleText);
+    }
+
     protected final void setMinimumDescriptionLength(int length) {
         this.bodyMinChar = length;
     }
 
-    protected void onSaveExtraInfo(ExtraInfo extraInfo) {
-    }
+    protected void onSaveExtraInfo(ExtraInfo extraInfo) { }
 
     protected abstract GithubTarget getTarget();
 
@@ -394,7 +370,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
 
     protected final void setGuestToken(String token) {
         this.token = token;
-        Log.d(TAG, "GuestToken: " + token);
+        // Log.d(TAG, "GuestToken: " + token);
         updateGuestTokenViews();
     }
 
@@ -402,6 +378,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
         private final Report report;
         private final GithubTarget target;
         private final GithubLogin login;
+        private Issue GitHubIssue;
 
         private ReportIssueTask(Activity activity, Report report, GithubTarget target,
                                 GithubLogin login) {
@@ -437,7 +414,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
 
             Issue issue = new Issue().setTitle(report.getTitle()).setBody(report.getDescription());
             try {
-                new IssueService(client).createIssue(target.getUsername(), target.getRepository(), issue);
+                GitHubIssue = new IssueService(client).createIssue(target.getUsername(), target.getRepository(), issue);
                 return RESULT_OK;
             } catch (RequestException e) {
                 switch (e.getStatus()) {
@@ -466,6 +443,10 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
 
             switch (result) {
                 case RESULT_OK:
+                    Intent view = new Intent(Intent.ACTION_VIEW,
+                            Uri.parse(GitHubIssue.getHtmlUrl()));
+                    view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(view);
                     tryToFinishActivity();
                     break;
                 case RESULT_BAD_CREDENTIALS:
@@ -494,19 +475,8 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
                             .title(R.string.air_dialog_title_failed)
                             .content(R.string.air_dialog_description_failed_unknown)
                             .positiveText(R.string.air_dialog_action_failed)
-                            .onPositive(new MaterialDialog.SingleButtonCallback() {
-                                @Override
-                                public void onClick(@NonNull MaterialDialog dialog,
-                                                    @NonNull DialogAction which) {
-                                    tryToFinishActivity();
-                                }
-                            })
-                            .cancelListener(new DialogInterface.OnCancelListener() {
-                                @Override
-                                public void onCancel(DialogInterface dialog) {
-                                    tryToFinishActivity();
-                                }
-                            })
+                            .onPositive((dialog, which) -> tryToFinishActivity())
+                            .cancelListener(dialog -> tryToFinishActivity())
                             .show();
                     break;
             }
@@ -521,7 +491,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
     }
 
     private static abstract class DialogAsyncTask<Pa, Pr, Re> extends AsyncTask<Pa, Pr, Re> {
-        private WeakReference<Context> contextWeakReference;
+        private final WeakReference<Context> contextWeakReference;
         private WeakReference<Dialog> dialogWeakReference;
 
         private boolean supposedToBeDismissed;

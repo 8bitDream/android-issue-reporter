@@ -24,6 +24,17 @@
 
 package com.heinrichreimersoftware.androidissuereporter;
 
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_EXTRA_INFO;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_GUEST_EMAIL_REQUIRED;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_GUEST_TOKEN;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_HOME_AS_UP_ENABLED;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_MIN_DESCRIPTION_LENGTH;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_PUBLIC_ISSUE_URL;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_TARGET_REPOSITORY;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_TARGET_USERNAME;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_THEME;
+import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_TITLE_TEXT_DEFAULT;
+
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -32,22 +43,13 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 
-import com.heinrichreimersoftware.androidissuereporter.model.github.ExtraInfo;
-import com.heinrichreimersoftware.androidissuereporter.model.github.GithubTarget;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.StyleRes;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
 
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_EXTRA_INFO;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_GUEST_EMAIL_REQUIRED;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_GUEST_TOKEN;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_HOME_AS_UP_ENABLED;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_MIN_DESCRIPTION_LENGTH;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_TARGET_REPOSITORY;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_TARGET_USERNAME;
-import static com.heinrichreimersoftware.androidissuereporter.IssueReporterLauncher.Activity.EXTRA_THEME;
+import com.heinrichreimersoftware.androidissuereporter.model.github.ExtraInfo;
+import com.heinrichreimersoftware.androidissuereporter.model.github.GithubTarget;
 
 public class IssueReporterLauncher {
     private static final String TAG = IssueReporterLauncher.class.getSimpleName();
@@ -58,8 +60,10 @@ public class IssueReporterLauncher {
     private int theme = 0;
     private String guestToken = null;
     private boolean guestEmailRequired = false;
+    private String publicIssueUrl = "";
     private int minDescriptionLength = 0;
-    private ExtraInfo extraInfo = new ExtraInfo();
+    private String titleTextDefault = null;
+    private final ExtraInfo extraInfo = new ExtraInfo();
     private boolean homeAsUpEnabled = true;
 
     private IssueReporterLauncher(String targetUsername, String targetRepository) {
@@ -87,6 +91,16 @@ public class IssueReporterLauncher {
 
     public IssueReporterLauncher guestEmailRequired(boolean guestEmailRequired) {
         this.guestEmailRequired = guestEmailRequired;
+        return this;
+    }
+
+    public IssueReporterLauncher publicIssueUrl(String publicIssueUrl) {
+        this.publicIssueUrl = publicIssueUrl;
+        return this;
+    }
+
+    public IssueReporterLauncher titleTextDefault(String titleTextDefault) {
+        this.titleTextDefault = titleTextDefault;
         return this;
     }
 
@@ -151,9 +165,12 @@ public class IssueReporterLauncher {
         intent.putExtra(EXTRA_THEME, theme);
         intent.putExtra(EXTRA_GUEST_TOKEN, guestToken);
         intent.putExtra(EXTRA_GUEST_EMAIL_REQUIRED, guestEmailRequired);
+        intent.putExtra(EXTRA_PUBLIC_ISSUE_URL, publicIssueUrl);
+        intent.putExtra(EXTRA_TITLE_TEXT_DEFAULT, titleTextDefault);
         intent.putExtra(EXTRA_MIN_DESCRIPTION_LENGTH, minDescriptionLength);
         intent.putExtra(EXTRA_EXTRA_INFO, extraInfo.toBundle());
         intent.putExtra(EXTRA_HOME_AS_UP_ENABLED, homeAsUpEnabled);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
 
@@ -163,6 +180,8 @@ public class IssueReporterLauncher {
         public static final String EXTRA_THEME = "IssueReporterLauncher.Activity.EXTRA_THEME";
         public static final String EXTRA_GUEST_TOKEN = "IssueReporterLauncher.Activity.EXTRA_GUEST_TOKEN";
         public static final String EXTRA_GUEST_EMAIL_REQUIRED = "IssueReporterLauncher.Activity.EXTRA_GUEST_EMAIL_REQUIRED";
+        public static final String EXTRA_PUBLIC_ISSUE_URL = "IssueReporterLauncher.Activity.EXTRA_PUBLIC_ISSUE_URL";
+        public static final String EXTRA_TITLE_TEXT_DEFAULT = "IssueReporterLauncher.Activity.EXTRA_TITLE_TEXT_DEFAULT";
         public static final String EXTRA_MIN_DESCRIPTION_LENGTH = "IssueReporterLauncher.Activity.EXTRA_MIN_DESCRIPTION_LENGTH";
         public static final String EXTRA_EXTRA_INFO = "IssueReporterLauncher.Activity.EXTRA_EXTRA_INFO";
         public static final String EXTRA_HOME_AS_UP_ENABLED = "IssueReporterLauncher.Activity.EXTRA_HOME_AS_UP_ENABLED";
@@ -203,6 +222,8 @@ public class IssueReporterLauncher {
             String token = intent.getStringExtra(EXTRA_GUEST_TOKEN);
             setGuestToken(TextUtils.isEmpty(token) ? null : token);
             setGuestEmailRequired(intent.getBooleanExtra(EXTRA_GUEST_EMAIL_REQUIRED, false));
+            setPublicIssueUrl(intent.getStringExtra(EXTRA_PUBLIC_ISSUE_URL));
+            setTitleTextDefault(intent.getStringExtra(EXTRA_TITLE_TEXT_DEFAULT));
             setMinimumDescriptionLength(intent.getIntExtra(EXTRA_MIN_DESCRIPTION_LENGTH, 0));
 
             if (intent.getBooleanExtra(EXTRA_HOME_AS_UP_ENABLED, true)) {
