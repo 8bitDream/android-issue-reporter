@@ -188,7 +188,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
             ClipboardManager clipboard = (ClipboardManager)
                     getSystemService(Context.CLIPBOARD_SERVICE);
             clipboard.setPrimaryClip(ClipData.newPlainText(
-                    "logcat", extraInfo.getInfo().get("logcat")));
+                    titleText, extraInfo.getInfo().get("logcat")));
         }
         if (TextUtils.isEmpty(issueUrl)) {
             GithubTarget target = getTarget();
@@ -443,6 +443,11 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
 
             switch (result) {
                 case RESULT_OK:
+                    ClipboardManager clipboard = (ClipboardManager) context
+                            .getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(ClipData.newPlainText(
+                            GitHubIssue.getHtmlUrl(), "issueUrl"
+                    ));
                     Intent view = new Intent(Intent.ACTION_VIEW,
                             Uri.parse(GitHubIssue.getHtmlUrl()));
                     view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
