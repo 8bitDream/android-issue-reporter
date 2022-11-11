@@ -26,6 +26,7 @@ package com.heinrichreimersoftware.androidissuereporter.model.github;
 
 import android.text.TextUtils;
 
+@SuppressWarnings("unused")
 public class GithubLogin {
     private final String username;
 

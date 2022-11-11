@@ -63,7 +63,6 @@ import com.heinrichreimersoftware.androidissuereporter.model.Report;
 import com.heinrichreimersoftware.androidissuereporter.model.github.ExtraInfo;
 import com.heinrichreimersoftware.androidissuereporter.model.github.GithubLogin;
 import com.heinrichreimersoftware.androidissuereporter.model.github.GithubTarget;
-import com.heinrichreimersoftware.androidissuereporter.util.ColorUtils;
 import com.heinrichreimersoftware.androidissuereporter.util.ThemeUtils;
 
 import org.eclipse.egit.github.core.Issue;
@@ -163,7 +162,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
 
         updateGuestTokenViews();
 
-        buttonSend.setImageResource(ColorUtils.isDark(ThemeUtils.getColorAccent(this)) ?
+        buttonSend.setImageResource(ThemeUtils.isDarkColor(ThemeUtils.getColorAccent(this)) ?
                 R.drawable.air_ic_send_dark : R.drawable.air_ic_send_light);
         buttonSend.setOnClickListener(v -> reportIssue());
 
@@ -217,9 +216,7 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
                 if (!isFinishing()) finish();
             });
             optionAnonymous.setVisibility(View.VISIBLE);
-            optionAnonymous.setOnClickListener(v -> {
-                layoutAnonymous.expand();
-            });
+            optionAnonymous.setOnClickListener(v -> layoutAnonymous.expand());
         }
     }
 
@@ -263,19 +260,18 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
             removeError(inputTitle);
         }
 
-        if (bodyMinChar != 0 && TextUtils.isEmpty(inputDescription.getText())) {
-            setError(inputDescription, R.string.air_error_no_description);
-            hasErrors = true;
-        } else {
-            if (bodyMinChar > 0) {
-                if (inputDescription.getText().toString().length() < bodyMinChar) {
-                    setError(inputDescription, getResources().getQuantityString(R.plurals.air_error_short_description, bodyMinChar, bodyMinChar));
-                    hasErrors = true;
-                } else {
-                    removeError(inputDescription);
-                }
-            } else
+        if (bodyMinChar > 0) {
+            if (TextUtils.isEmpty(inputDescription.getText())) {
+                setError(inputDescription, R.string.air_error_no_description);
+                hasErrors = true;
+            } else if (inputDescription.getText().toString().length() < bodyMinChar) {
+                setError(inputDescription, getResources().getQuantityString(R.plurals.air_error_short_description, bodyMinChar, bodyMinChar));
+                hasErrors = true;
+            } else {
                 removeError(inputDescription);
+            }
+        } else {
+            removeError(inputDescription);
         }
         return hasErrors;
     }
@@ -521,14 +517,6 @@ public abstract class IssueReporterActivity extends AppCompatActivity {
         @Override
         protected final void onProgressUpdate(Pr... values) {
             super.onProgressUpdate(values);
-            Dialog dialog = getDialog();
-            if (dialog != null) {
-                onProgressUpdate(dialog, values);
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        private void onProgressUpdate(@NonNull Dialog dialog, Pr... values) {
         }
 
         @Nullable

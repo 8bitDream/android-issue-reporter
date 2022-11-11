@@ -62,4 +62,8 @@ public class ThemeUtils {
     public static int getColorAccent(@NonNull Context context) {
         return resolveThemeColor(context, R.attr.colorAccent);
     }
+
+    public static boolean isDarkColor(@ColorInt int color) {
+        return androidx.core.graphics.ColorUtils.calculateLuminance(color) < .6;
+    }
 }

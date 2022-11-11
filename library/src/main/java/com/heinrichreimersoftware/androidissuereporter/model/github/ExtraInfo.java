@@ -29,6 +29,7 @@ import android.os.Bundle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class ExtraInfo {
     private final Map<String, String> extraInfo = new LinkedHashMap<>();
 

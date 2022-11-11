@@ -46,9 +46,10 @@ afterEvaluate {
 
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'com.google.android.material:material:1.5.0'
+    // https://stackoverflow.com/questions/74191324/
+    implementation 'com.google.android.material:material:1.6.0'
 
     implementation 'org.eclipse.mylyn.github:org.eclipse.egit.github.core:2.1.5'
     implementation 'com.afollestad.material-dialogs:core:0.8.5.9'
